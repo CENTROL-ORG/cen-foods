@@ -4,78 +4,399 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CEN FOOD | Premium Delivery</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --z-red: #E23744; --z-dark: #1C1C1C; --z-grey: #696969; --white: #ffffff; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Okra', Helvetica, sans-serif; background: #f4f4f4; margin: 0; color: var(--z-dark); }
+        :root { 
+            --z-red: #EF4F5F; 
+            --z-dark: #1C1C1C; 
+            --z-card-dark: #0F172A;
+            --z-grey: #828282; 
+            --white: #ffffff; 
+            --bg-light: #F8F9FA;
+            --border-color: #E8E8E8;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --shadow-sm: 0 2px 8px rgba(28, 28, 28, 0.08);
+            --shadow-md: 0 8px 24px rgba(28, 28, 28, 0.12);
+        }
         
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body { 
+            background: var(--bg-light); 
+            color: var(--z-dark);
+            line-height: 1.4;
+        }
+
         /* Layout Container */
-        .app-container { max-width: 800px; margin: 0 auto; background: var(--white); min-height: 100vh; position: relative; }
+        .app-container { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: var(--white); 
+            min-height: 100vh; 
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.03);
+            padding-bottom: 110px;
+        }
 
-        /* Header & Banner */
-        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; sticky: top; background: white; z-index: 100; }
-        .logo { font-size: 24px; font-weight: 900; font-style: italic; color: var(--z-red); letter-spacing: -1px; }
-        .coupon-banner { background: #256fef; color: white; padding: 12px; font-size: 13px; font-weight: 600; text-align: center; }
+        /* Header Layout */
+        header { 
+            padding: 16px 24px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid var(--border-color); 
+            position: sticky; 
+            top: 0; 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px);
+            z-index: 100; 
+        }
+        
+        .logo { 
+            font-size: 26px; 
+            font-weight: 800; 
+            letter-spacing: -1.5px; 
+            color: var(--z-red);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .logo span {
+            color: var(--z-dark);
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: 1px;
+            background: #FCEECF;
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-left: 6px;
+        }
 
-        /* Add Food Form */
-        .admin-section { padding: 15px; background: #fff; border-bottom: 8px solid #f4f4f4; }
-        .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
-        .btn-add-menu { background: var(--z-dark); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 600; }
+        .wallet-badge {
+            background: #F4F4F5;
+            padding: 8px 16px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border-color);
+        }
 
-        /* Food Grid */
-        .menu-grid { padding: 15px; display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media (min-width: 600px) { .menu-grid { grid-template-columns: 1fr 1fr; } }
+        .wallet-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--z-grey);
+            letter-spacing: 0.5px;
+        }
 
-        .food-card { border-radius: 15px; overflow: hidden; background: white; transition: transform 0.2s; position: relative; border: 1px solid #eee; }
-        .food-img { width: 100%; height: 180px; background: #eee; object-fit: cover; }
-        .food-details { padding: 12px; }
-        .food-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-        .food-price { font-weight: 700; color: #444; }
+        #user-bal { 
+            font-size: 16px;
+            font-weight: 700; 
+            color: #111827;
+        }
 
-        /* Buttons */
-        .add-to-cart { float: right; border: 1px solid var(--z-red); background: #fff; color: var(--z-red); padding: 5px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        .add-to-cart:active { background: var(--z-red); color: white; }
-        .delete-food { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
+        /* Dynamic Banner Styling */
+        .coupon-banner { 
+            background: linear-gradient(135deg, #256FEF 0%, #1A4EB0 100%); 
+            color: white; 
+            padding: 14px; 
+            font-size: 14px; 
+            font-weight: 700; 
+            text-align: center; 
+            letter-spacing: 0.2px;
+            box-shadow: inset 0 -2px 6px rgba(0,0,0,0.1);
+            transition: background 0.3s ease;
+        }
 
-        /* Sticky Bottom Cart */
-        .cart-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; z-index: 1000; }
-        .cart-btn { max-width: 770px; margin: 0 auto; background: var(--z-red); color: white; padding: 15px; border-radius: 12px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); cursor: pointer; }
+        /* Luxury Admin Area */
+        .admin-section { 
+            padding: 24px; 
+            background: var(--white); 
+            border-bottom: 8px solid var(--bg-light); 
+        }
+        
+        .admin-section h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--z-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .admin-section h4::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 16px;
+            background: var(--z-red);
+            border-radius: 2px;
+        }
+
+        .form-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-row { 
+            display: flex; 
+            gap: 12px; 
+        }
+        
+        input { 
+            flex: 1; 
+            padding: 14px 16px; 
+            border: 1px solid #D1D5DB; 
+            border-radius: var(--radius-md); 
+            outline: none; 
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            background: #FAFAFA;
+        }
+        
+        input:focus {
+            border-color: var(--z-red);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(239, 79, 95, 0.1);
+        }
+
+        .btn-add-menu { 
+            background: var(--z-dark); 
+            color: white; 
+            border: none; 
+            padding: 14px 24px; 
+            border-radius: var(--radius-md); 
+            font-weight: 700; 
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        
+        .btn-add-menu:hover { background: #000000; }
+        .btn-add-menu:active { transform: scale(0.98); }
+
+        /* Modernized Menu Framework */
+        .menu-grid { 
+            padding: 24px; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 24px; 
+        }
+        
+        @media (min-width: 600px) { .menu-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 900px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .food-card { 
+            border-radius: var(--radius-lg); 
+            overflow: hidden; 
+            background: white; 
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease; 
+            position: relative; 
+            border: 1px solid #EAEAEA; 
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .food-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: #DCDCDC;
+        }
+        
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 210px;
+            background: #EFEFEF;
+            overflow: hidden;
+        }
+
+        .food-img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            transition: transform 0.5s ease;
+        }
+        
+        .food-card:hover .food-img {
+            transform: scale(1.04);
+        }
+
+        .food-details { 
+            padding: 16px; 
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .food-name { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #1F2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .price-action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .food-price { 
+            font-size: 18px;
+            font-weight: 800; 
+            color: #111827; 
+        }
+
+        /* Action Controls */
+        .add-to-cart { 
+            border: 1px solid var(--z-red); 
+            background: #FFF5F6; 
+            color: var(--z-red); 
+            padding: 8px 24px; 
+            border-radius: var(--radius-md); 
+            font-weight: 700; 
+            font-size: 13px;
+            cursor: pointer; 
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(239, 79, 95, 0.06);
+        }
+        
+        .add-to-cart:hover { 
+            background: var(--z-red); 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(239, 79, 95, 0.2);
+        }
+        
+        .add-to-cart:active { transform: scale(0.95); }
+        
+        .delete-food { 
+            position: absolute; 
+            top: 12px; 
+            right: 12px; 
+            background: rgba(255, 255, 255, 0.9); 
+            color: #1F2937; 
+            border: 1px solid rgba(0,0,0,0.05); 
+            border-radius: 50%; 
+            width: 32px; 
+            height: 32px; 
+            cursor: pointer; 
+            font-size: 18px;
+            font-weight: 400; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .delete-food:hover {
+            background: var(--z-red);
+            color: var(--white);
+            transform: rotate(90deg);
+        }
+
+        /* Fixed Footer Infrastructure */
+        .cart-footer { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            padding: 16px 24px; 
+            z-index: 1000; 
+            background: linear-gradient(to top, rgba(255,255,255,1) 70%, rgba(255,255,255,0) 0%);
+        }
+        
+        .cart-btn { 
+            max-width: 1050px; 
+            margin: 0 auto; 
+            background: linear-gradient(135deg, var(--z-red) 0%, #D6303F 100%);
+            color: white; 
+            padding: 16px 24px; 
+            border-radius: var(--radius-md); 
+            display: none; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 10px 30px rgba(239, 79, 95, 0.35); 
+            cursor: pointer; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .cart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(239, 79, 95, 0.45); 
+        }
+        
+        #cart-info {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 0.2px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 8px;
+        }
+
+        .checkout-prompt {
+            font-weight: 800;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <header>
-        <div class="logo">CEN FOOD</div>
-        <div id="user-bal" style="font-weight: 700;">₹0.00</div>
+        <div class="logo">CEN FOOD<span>PREMIUM</span></div>
+        <div class="wallet-badge">
+            <span class="wallet-label">Bank Balance</span>
+            <div id="user-bal">₹0.00</div>
+        </div>
     </header>
 
     <div id="coupon-area" class="coupon-banner">Checking for rewards...</div>
 
-    <!-- Section to add permanent food -->
     <div class="admin-section">
-        <h4 style="margin-top:0">Manage Restaurant Menu</h4>
-        <div class="input-group">
-            <input type="text" id="new-name" placeholder="Dish Name (e.g. Pizza)">
-            <input type="number" id="new-price" placeholder="Price">
-        </div>
-        <div class="input-group">
-            <input type="text" id="new-img" placeholder="Image URL">
-            <button class="btn-add-menu" onclick="saveFoodToDB()">Add to Menu</button>
+        <h4>Manage Restaurant Menu</h4>
+        <div class="form-grid">
+            <div class="input-row">
+                <input type="text" id="new-name" placeholder="Dish Name (e.g. Premium Pepperoni Pizza)">
+                <input type="number" id="new-price" placeholder="Price (₹)">
+            </div>
+            <div class="input-row">
+                <input type="text" id="new-img" placeholder="Image Link URL (Optional)">
+                <button class="btn-add-menu" onclick="saveFoodToDB()">Add Item</button>
+            </div>
         </div>
     </div>
 
     <div class="menu-grid" id="menu-container">
-        <!-- Foods from Firebase load here -->
-    </div>
+        </div>
 
     <div class="cart-footer">
         <div id="cart-bar" class="cart-btn" onclick="processPayment()">
             <div id="cart-info">0 Items</div>
-            <div style="font-weight: 700;">Place Order & Pay →</div>
+            <div class="checkout-prompt">Place Order & Pay →</div>
         </div>
     </div>
 </div>
@@ -115,11 +436,15 @@
                 menuDiv.innerHTML += `
                     <div class="food-card">
                         <button class="delete-food" onclick="deleteFood('${child.key}')">×</button>
-                        <img src="${item.img}" class="food-img">
+                        <div class="image-container">
+                            <img src="${item.img}" class="food-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';">
+                        </div>
                         <div class="food-details">
                             <div class="food-name">${item.name}</div>
-                            <span class="food-price">₹${item.price}</span>
-                            <button class="add-to-cart" onclick="addToCart('${item.name}', ${item.price})">ADD</button>
+                            <div class="price-action-row">
+                                <span class="food-price">₹${item.price}</span>
+                                <button class="add-to-cart" onclick="addToCart('${item.name}', ${item.price})">ADD</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -151,14 +476,15 @@
             const rand = Math.floor(Math.random() * 16) + 5;
             activeDiscount = rand;
             document.getElementById('coupon-area').innerHTML = `🎁 48HR GIFT: ${rand}% DISCOUNT GENERATED!`;
+            document.getElementById('coupon-area').style.background = "linear-gradient(135deg, #EF4F5F 0%, #B82331 100%)";
             await db.ref(`users/${userId}/last_coupon`).set({ timestamp: now, percent: rand, status: "available" });
         } else if (data.status === "used") {
             activeDiscount = 0;
-            document.getElementById('coupon-area').style.background = "#666";
-            document.getElementById('coupon-area').innerText = "⏳ Coupon used. New one coming soon!";
+            document.getElementById('coupon-area').style.background = "#4B5563";
+            document.getElementById('coupon-area').innerText = "⏳ Coupon used. New rewards unlock soon!";
         } else {
             activeDiscount = data.percent;
-            document.getElementById('coupon-area').innerText = `✅ ${activeDiscount}% OFF available for your next order`;
+            document.getElementById('coupon-area').innerText = `✅ Premium Benefit: ${activeDiscount}% OFF unlocked for your order`;
         }
     }
 
@@ -172,11 +498,8 @@
         let bal = snap.val() || 0;
 
         if(bal >= finalTotal) {
-            // Deduct
             await userRef.child('balance').set(bal - finalTotal);
-            // Mark Coupon Spent
             if(activeDiscount > 0) await userRef.child('last_coupon/status').set("used");
-            // Log Bank
             await userRef.child('history').push({
                 amount: -finalTotal,
                 description: `CEN FOOD: Order Successful`,
