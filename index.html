@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CEN FOOD | Premium Delivery</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --z-red: #E23744; --z-dark: #1C1C1C; --z-grey: #696969; --white: #ffffff; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Okra', Helvetica, sans-serif; background: #f4f4f4; margin: 0; color: var(--z-dark); }
+        
+        /* Layout Container */
+        .app-container { max-width: 800px; margin: 0 auto; background: var(--white); min-height: 100vh; position: relative; }
+
+        /* Header & Banner */
+        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; sticky: top; background: white; z-index: 100; }
+        .logo { font-size: 24px; font-weight: 900; font-style: italic; color: var(--z-red); letter-spacing: -1px; }
+        .coupon-banner { background: #256fef; color: white; padding: 12px; font-size: 13px; font-weight: 600; text-align: center; }
+
+        /* Add Food Form */
+        .admin-section { padding: 15px; background: #fff; border-bottom: 8px solid #f4f4f4; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+        .btn-add-menu { background: var(--z-dark); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 600; }
+
+        /* Food Grid */
+        .menu-grid { padding: 15px; display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 600px) { .menu-grid { grid-template-columns: 1fr 1fr; } }
+
+        .food-card { border-radius: 15px; overflow: hidden; background: white; transition: transform 0.2s; position: relative; border: 1px solid #eee; }
+        .food-img { width: 100%; height: 180px; background: #eee; object-fit: cover; }
+        .food-details { padding: 12px; }
+        .food-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .food-price { font-weight: 700; color: #444; }
+
+        /* Buttons */
+        .add-to-cart { float: right; border: 1px solid var(--z-red); background: #fff; color: var(--z-red); padding: 5px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .add-to-cart:active { background: var(--z-red); color: white; }
+        .delete-food { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
+
+        /* Sticky Bottom Cart */
+        .cart-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; z-index: 1000; }
+        .cart-btn { max-width: 770px; margin: 0 auto; background: var(--z-red); color: white; padding: 15px; border-radius: 12px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="logo">CEN FOOD</div>
+        <div id="user-bal" style="font-weight: 700;">₹0.00</div>
+    </header>
+
+    <div id="coupon-area" class="coupon-banner">Checking for rewards...</div>
+
+    <!-- Section to add permanent food -->
+    <div class="admin-section">
+        <h4 style="margin-top:0">Manage Restaurant Menu</h4>
+        <div class="input-group">
+            <input type="text" id="new-name" placeholder="Dish Name (e.g. Pizza)">
+            <input type="number" id="new-price" placeholder="Price">
+        </div>
+        <div class="input-group">
+            <input type="text" id="new-img" placeholder="Image URL">
+            <button class="btn-add-menu" onclick="saveFoodToDB()">Add to Menu</button>
+        </div>
+    </div>
+
+    <div class="menu-grid" id="menu-container">
+        <!-- Foods from Firebase load here -->
+    </div>
+
+    <div class="cart-footer">
+        <div id="cart-bar" class="cart-btn" onclick="processPayment()">
+            <div id="cart-info">0 Items</div>
+            <div style="font-weight: 700;">Place Order & Pay →</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 1. FIREBASE SETUP ---
+    const firebaseConfig = { 
+        databaseURL: "https://centrol-bank-default-rtdb.asia-southeast1.firebasedatabase.app" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const userId = "pranshi_main";
+
+    let cart = [];
+    let activeDiscount = 0;
+
+    // --- 2. PERMANENT MENU LOGIC ---
+    function saveFoodToDB() {
+        const name = document.getElementById('new-name').value;
+        const price = document.getElementById('new-price').value;
+        const img = document.getElementById('new-img').value || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400";
+
+        if(name && price) {
+            db.ref(`users/${userId}/custom_menu`).push({ name, price: parseFloat(price), img });
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-price').value = '';
+            document.getElementById('new-img').value = '';
+        }
+    }
+
+    function loadMenu() {
+        db.ref(`users/${userId}/custom_menu`).on('value', (snapshot) => {
+            const menuDiv = document.getElementById('menu-container');
+            menuDiv.innerHTML = '';
+            snapshot.forEach((child) => {
+                const item = child.val();
+                menuDiv.innerHTML += `
+                    <div class="food-card">
+                        <button class="delete-food" onclick="deleteFood('${child.key}')">×</button>
+                        <img src="${item.img}" class="food-img">
+                        <div class="food-details">
+                            <div class="food-name">${item.name}</div>
+                            <span class="food-price">₹${item.price}</span>
+                            <button class="add-to-cart" onclick="addToCart('${item.name}', ${item.price})">ADD</button>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function deleteFood(id) {
+        if(confirm("Remove this dish from the menu?")) {
+            db.ref(`users/${userId}/custom_menu/${id}`).remove();
+        }
+    }
+
+    // --- 3. CART & COUPON LOGIC ---
+    function addToCart(name, price) {
+        cart.push({name, price});
+        const bar = document.getElementById('cart-bar');
+        bar.style.display = 'flex';
+        document.getElementById('cart-info').innerText = `${cart.length} Item${cart.length > 1 ? 's' : ''} added`;
+    }
+
+    async function checkCoupon() {
+        const snapshot = await db.ref(`users/${userId}/last_coupon`).once('value');
+        const data = snapshot.val();
+        const now = Date.now();
+        const fortyEightHours = 48 * 60 * 60 * 1000;
+
+        if (!data || (now - data.timestamp > fortyEightHours)) {
+            const rand = Math.floor(Math.random() * 16) + 5;
+            activeDiscount = rand;
+            document.getElementById('coupon-area').innerHTML = `🎁 48HR GIFT: ${rand}% DISCOUNT GENERATED!`;
+            await db.ref(`users/${userId}/last_coupon`).set({ timestamp: now, percent: rand, status: "available" });
+        } else if (data.status === "used") {
+            activeDiscount = 0;
+            document.getElementById('coupon-area').style.background = "#666";
+            document.getElementById('coupon-area').innerText = "⏳ Coupon used. New one coming soon!";
+        } else {
+            activeDiscount = data.percent;
+            document.getElementById('coupon-area').innerText = `✅ ${activeDiscount}% OFF available for your next order`;
+        }
+    }
+
+    // --- 4. PAYMENT & BANK SYNC ---
+    async function processPayment() {
+        let rawTotal = cart.reduce((s, i) => s + i.price, 0);
+        let finalTotal = activeDiscount > 0 ? rawTotal * (1 - activeDiscount/100) : rawTotal;
+
+        const userRef = db.ref(`users/${userId}`);
+        const snap = await userRef.child('balance').once('value');
+        let bal = snap.val() || 0;
+
+        if(bal >= finalTotal) {
+            // Deduct
+            await userRef.child('balance').set(bal - finalTotal);
+            // Mark Coupon Spent
+            if(activeDiscount > 0) await userRef.child('last_coupon/status').set("used");
+            // Log Bank
+            await userRef.child('history').push({
+                amount: -finalTotal,
+                description: `CEN FOOD: Order Successful`,
+                timestamp: new Date().toLocaleString(),
+                type: "DEBIT"
+            });
+            alert("Order Successful! Payment processed via CEN Bank.");
+            location.reload();
+        } else {
+            alert("Insufficient Bank Balance!");
+        }
+    }
+
+    // Update Balance Display
+    db.ref(`users/${userId}/balance`).on('value', (s) => {
+        document.getElementById('user-bal').innerText = `₹${(s.val() || 0).toFixed(2)}`;
+    });
+
+    loadMenu();
+    checkCoupon();
+</script>
+</body>
+</html>
