@@ -98,6 +98,55 @@
             color: var(--success);
         }
 
+        /* Search Bar Wrapper */
+        .search-container {
+            padding: 16px 20px 8px 20px;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            font-size: 16px;
+            color: var(--text-sub);
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 14px 14px 44px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+            background: var(--surface-card);
+        }
+
+        .search-input:focus + .search-icon {
+            color: var(--accent);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-sub);
+            opacity: 0.7;
+        }
+
         /* Rewards Banner */
         .coupon-banner { 
             background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%); 
@@ -164,7 +213,7 @@
             flex-wrap: wrap;
         }
         
-        input { 
+        .admin-section input { 
             flex: 1; 
             padding: 12px 14px; 
             border: 1px solid var(--border); 
@@ -178,7 +227,7 @@
             min-width: 160px;
         }
         
-        input:focus {
+        .admin-section input:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
         }
@@ -422,6 +471,14 @@
         </div>
     </header>
 
+    <!-- SEARCH SYSTEM BAR -->
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" id="search-bar" class="search-input" placeholder="Search delicious cuisines or dishes..." oninput="filterMenu()">
+            <span class="search-icon">🔍</span>
+        </div>
+    </div>
+
     <div id="coupon-area" class="coupon-banner">Checking for rewards...</div>
 
     <div class="admin-toggle-btn" onclick="toggleAdminPanel()">⚙️ Configure Restaurant Dashboard Menu</div>
@@ -461,6 +518,7 @@
 
     let cart = [];
     let activeDiscount = 0;
+    let localMenuCache = []; // Internal global storage mapping to feed the search engine accurately
 
     function toggleAdminPanel() {
         const panel = document.getElementById('admin-panel');
@@ -484,42 +542,62 @@
 
     function loadMenu() {
         db.ref(`users/${userId}/custom_menu`).on('value', (snapshot) => {
-            const menuDiv = document.getElementById('menu-container');
-            menuDiv.innerHTML = '';
+            localMenuCache = []; // Clear array reference
             snapshot.forEach((child) => {
                 const item = child.val();
-                
-                // Read current total item counts from cart structural states
-                const itemCount = cart.filter(product => product.name === item.name).length;
-                
-                let actionMarkup = `<button class="add-to-cart" onclick="addToCart('${item.name}', ${item.price}, '${child.key}')">ADD</button>`;
-                if(itemCount > 0) {
-                    actionMarkup = `
-                        <div class="action-group">
-                            <button class="ctrl-btn" onclick="removeFromCart('${item.name}', '${child.key}')">−</button>
-                            <span class="count-display">${itemCount}</span>
-                            <button class="ctrl-btn" onclick="addToCart('${item.name}', ${item.price}, '${child.key}')">+</button>
-                        </div>
-                    `;
-                }
+                localMenuCache.push({
+                    key: child.key,
+                    name: item.name,
+                    price: item.price,
+                    img: item.img
+                });
+            });
+            // Execute view render engine pipeline pass
+            renderMenu(localMenuCache);
+        });
+    }
 
-                menuDiv.innerHTML += `
-                    <div class="food-card">
-                        <button class="delete-food" onclick="deleteFood('${child.key}')">×</button>
-                        <div class="image-container">
-                            <img src="${item.img}" class="food-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';">
-                        </div>
-                        <div class="food-details">
-                            <div class="food-name">${item.name}</div>
-                            <div class="price-action-row">
-                                <span class="food-price">₹${item.price.toLocaleString()}</span>
-                                <div id="action-cell-${child.key}">${actionMarkup}</div>
-                            </div>
-                        </div>
+    // --- SEARCH LOGIC RENDER PASS ---
+    function renderMenu(itemsArray) {
+        const menuDiv = document.getElementById('menu-container');
+        menuDiv.innerHTML = '';
+        
+        itemsArray.forEach((item) => {
+            const itemCount = cart.filter(product => product.name === item.name).length;
+            
+            let actionMarkup = `<button class="add-to-cart" onclick="addToCart('${item.name}', ${item.price}, '${item.key}')">ADD</button>`;
+            if(itemCount > 0) {
+                actionMarkup = `
+                    <div class="action-group">
+                        <button class="ctrl-btn" onclick="removeFromCart('${item.name}', '${item.key}')">−</button>
+                        <span class="count-display">${itemCount}</span>
+                        <button class="ctrl-btn" onclick="addToCart('${item.name}', ${item.price}, '${item.key}')">+</button>
                     </div>
                 `;
-            });
+            }
+
+            menuDiv.innerHTML += `
+                <div class="food-card">
+                    <button class="delete-food" onclick="deleteFood('${item.key}')">×</button>
+                    <div class="image-container">
+                        <img src="${item.img}" class="food-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';">
+                    </div>
+                    <div class="food-details">
+                        <div class="food-name">${item.name}</div>
+                        <div class="price-action-row">
+                            <span class="food-price">₹${item.price.toLocaleString()}</span>
+                            <div id="action-cell-${item.key}">${actionMarkup}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
+    }
+
+    function filterMenu() {
+        const query = document.getElementById('search-bar').value.toLowerCase().trim();
+        const filteredItems = localMenuCache.filter(item => item.name.toLowerCase().includes(query));
+        renderMenu(filteredItems);
     }
 
     function deleteFood(id) {
@@ -539,7 +617,6 @@
         if (index > -1) {
             cart.splice(index, 1);
         }
-        // Grab item price profile safely from current reference context
         updateCartStateUI(name, null, elementKey);
     }
 
@@ -552,13 +629,11 @@
             bar.style.display = 'none';
         }
 
-        // Live locally scope specific UI elements to prevent full virtual grid resets
         const itemCount = cart.filter(product => product.name === name).length;
         const targetCell = document.getElementById(`action-cell-${elementKey}`);
         
         if(targetCell) {
             if(itemCount > 0) {
-                // Read price structural properties contextually if needed safely
                 const itemPrice = price || cart.find(product => product.name === name).price;
                 targetCell.innerHTML = `
                     <div class="action-group">
@@ -568,7 +643,6 @@
                     </div>
                 `;
             } else {
-                // Fetch dynamic fallbacks directly safely
                 const itemPrice = price || 0;
                 targetCell.innerHTML = `<button class="add-to-cart" onclick="addToCart('${name}', ${itemPrice}, '${elementKey}')">ADD</button>`;
             }
